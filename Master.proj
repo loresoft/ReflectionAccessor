@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <PropertyGroup>
+    <BuildFolder>$(MSBuildProjectDirectory)\Build</BuildFolder>
+    <ToolFolder>$(MSBuildProjectDirectory)\Tools</ToolFolder>
+    <SourceFolder>$(MSBuildProjectDirectory)\src</SourceFolder>
+    <TestFolder>$(MSBuildProjectDirectory)\test</TestFolder>
+    <PackageFolder>$(BuildFolder)\Reflection</PackageFolder>
+
+    <MSBuildCommunityTasksPath>$(ToolFolder)\MSBuildTasks\tools</MSBuildCommunityTasksPath>
+  </PropertyGroup>
+
+  <Import Project="$(MSBuildCommunityTasksPath)\MSBuild.Community.Tasks.targets"/>
+
+  <!-- Version Number -->
+  <PropertyGroup>
+    <BuildNumber Condition=" '$(APPVEYOR_BUILD_NUMBER)' != '' ">$(APPVEYOR_BUILD_NUMBER)</BuildNumber>
+    <BuildNumber Condition=" '$(BUILD_NUMBER)' != '' ">$(BUILD_NUMBER)</BuildNumber>
+    <BuildNumber Condition=" '$(BuildNumber)' == '' ">0</BuildNumber>
+    
+    <BuildConfiguration  Condition=" '$(BuildConfiguration)' == '' ">Release</BuildConfiguration>
+
+    <Major Condition=" '$(Major)' == '' ">1</Major>
+    <Minor Condition=" '$(Minor)' == '' ">0</Minor>
+    <Revision Condition=" '$(Revision)' == '' ">0</Revision>
+
+    <AssemblyVersion>$(Major).$(Minor).0.0</AssemblyVersion>
+    <AssemblyFileVersion>$(Major).$(Minor).$(Revision).$(BuildNumber)</AssemblyFileVersion>
+    <AssemblyInformationalVersion>$(Major).$(Minor).$(Revision).$(BuildNumber)</AssemblyInformationalVersion>
+    <PackageVersion>$(Major).$(Minor).$(Revision).$(BuildNumber)</PackageVersion>
+  </PropertyGroup>
+
+
+  <Target Name="Clean">
+    <DeleteTree Directories="$(SourceFolder)\**\obj\**;$(SourceFolder)\**\bin\**" />
+    <DeleteTree Directories="$(BuildFolder)" ContinueOnError="true" />
+  </Target>
+
+  <Target Name="Version">
+    <Time>
+      <Output TaskParameter="Year" PropertyName="Year" />
+    </Time>
+
+    <Message Text="Version: $(AssemblyInformationalVersion)"/>
+
+    <AssemblyInfo CodeLanguage="CS"
+                  OutputFile="$(SourceFolder)\GlobalAssemblyInfo.cs"
+                  GenerateClass="true"
+                  AssemblyProduct="ReflectionAccessor"
+                  AssemblyDescription="Fast reflection source code package"
+                  AssemblyCompany="LoreSoft"
+                  AssemblyCopyright="Copyright © $(Year) LoreSoft"
+                  AssemblyConfiguration="$(BuildConfiguration)"
+                  AssemblyVersion="$(AssemblyVersion)"
+                  AssemblyFileVersion="$(AssemblyFileVersion)"
+                  AssemblyInformationalVersion="$(AssemblyInformationalVersion)"
+                  AssemblyTrademark=""/>
+  </Target>
+
+  <Target Name="Compile" DependsOnTargets="Clean;Version">
+    <MSBuild Projects="ReflectionAccessor.sln"
+             Properties="Configuration=$(BuildConfiguration)"/>
+  </Target>
+
+  <Target Name="Test" DependsOnTargets="Compile">
+    <ItemGroup>
+      <TestAssemblies Include="$(TestFolder)\**\project.json"/>
+    </ItemGroup>
+
+    <exec Command="dotnet test &quot;%(TestAssemblies.Identity)&quot;"
+          WorkingDirectory="$(TestFolder)\%(TestAssemblies.RecursiveDir)"/>
+  </Target>
+
+  <Target Name="Package" DependsOnTargets="Test">
+    <MakeDir Directories="$(BuildFolder)" Condition="!EXISTS($(BuildFolder))" />
+    <MakeDir Directories="$(PackageFolder)" Condition="!Exists('$(PackageFolder)')" />
+    
+    <ItemGroup>
+        <SourceFile Include="$(SourceFolder)\ReflectionAccessor\*.cs" />
+    </ItemGroup>
+    
+    <Copy SourceFiles="@(SourceFile)"
+          DestinationFiles="@(SourceFile->'$(PackageFolder)\%(Filename)%(Extension).pp')" />
+
+    <ItemGroup>
+        <UpdateFile Include="$(PackageFolder)\**\*.pp" />
+    </ItemGroup>
+
+    <!-- replace namespace-->
+    <FileUpdate Files="@(UpdateFile)"
+                Regex="namespace ReflectionAccessor"
+                ReplacementText="namespace $rootnamespace$.Reflection" />
+
+    <!-- nuget package -->
+    <ItemGroup>
+      <NuGetFiles Include="*.nuspec"/>
+    </ItemGroup>
+
+    <NuGetPack File="%(NuGetFiles.Identity)"
+               OutputDirectory="$(BuildFolder)"
+               Version="$(PackageVersion)" />
+
+  </Target>
+
+  <Target Name="Build" DependsOnTargets="Package">
+  </Target>
+
+</Project>

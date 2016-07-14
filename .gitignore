@@ -250,3 +250,10 @@ paket-files/
 # JetBrains Rider
 .idea/
 *.sln.iml
+
+# Custom
+/Build
+/Tools
+/*.txt
+/xunit.xml
+*.GhostDoc.xml
