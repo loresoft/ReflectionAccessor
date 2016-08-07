@@ -17,9 +17,6 @@
     <frameworkAssemblies>
       <frameworkAssembly assemblyName="System.ComponentModel.DataAnnotations" targetFramework="" />
     </frameworkAssemblies>
-    <contentFiles>
-      <files include="cs/**/*.*" buildAction="Compile" />
-    </contentFiles>
   </metadata>
   <files>
     <file src="Build\Reflection\*.cs.pp" target="content\Reflection\" />
